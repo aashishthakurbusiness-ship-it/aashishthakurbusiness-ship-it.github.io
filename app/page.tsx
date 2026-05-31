@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useTheme } from 'next-themes'
+import { Menu, X } from 'lucide-react'
 
 export default function Home() {
   const [scrollY, setScrollY] = useState(0)
@@ -21,16 +22,21 @@ export default function Home() {
   const [activeVideo, setActiveVideo] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+  const [heroHeight, setHeroHeight] = useState(800)
 
   const videos = [
     {
       src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/VFX%20-%20Title-B0g7yQ6SdCb5QxXL7uDiv15fRt6ivl.mp4",
+      poster: "/images/poster-1.jpg",
       title: "Studio Signature Sequence",
       description: "Visual Effects & Motion Design",
       tags: ["After Effects", "VFX"]
     },
     {
       src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/new-SBns0FE4ozZLwbRCVRt68AHyxp2ESR.mp4",
+      poster: "/images/poster-2.jpg",
       title: "GAYAK - Title Sequence",
       description: "Film Title Design & Animation",
       tags: ["Motion Graphics", "Cinema 4D"]
@@ -44,6 +50,14 @@ export default function Home() {
   useEffect(() => {
     startHackEffect()
     setMounted(true)
+    
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 1024)
+      setHeroHeight(window.innerHeight)
+    }
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
   }, [])
 
   useEffect(() => {
@@ -106,18 +120,18 @@ export default function Home() {
     }
   }
 
-  const heroHeight = typeof window !== 'undefined' ? window.innerHeight : 800
-  const scrollProgress = Math.min(scrollY / heroHeight, 1)
+  const scrollProgress = mounted ? Math.min(scrollY / heroHeight, 1) : 0
   
-  const imageScale = Math.max(0.65, 1 - (scrollProgress * 0.35))
+  const imageScale = mounted && !isMobile ? Math.max(0.65, 1 - (scrollProgress * 0.35)) : 1
   
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
   const imageTranslateY = 0
-  const imageTranslateX = isMobile ? (-scrollProgress * 30) : 0
+  const imageTranslateX = mounted && isMobile ? (-scrollProgress * 30) : 0
   
-  const aboutMeProgress = Math.max(0, Math.min(1, (scrollY - heroHeight * 0.5) / (heroHeight * 0.3)))
+  const aboutMeProgress = mounted && !isMobile 
+    ? Math.max(0, Math.min(1, (scrollY - heroHeight * 0.5) / (heroHeight * 0.3))) 
+    : 1
   
-  const navOpacity = scrollY > 100 ? 0.4 : 1
+  const navOpacity = scrollY > 100 ? 0.75 : 1
 
   const isDark = mounted && (resolvedTheme === 'dark' || isOverDarkSection)
   const navTextColor = isDark ? 'text-white' : 'text-foreground'
@@ -162,39 +176,55 @@ export default function Home() {
     }
 
     try {
-      const accessKey = process.env.NEXT_PUBLIC_WEB3FORMS_ACCESS_KEY || 'ca1b4399-6a58-4070-a57a-efd55de2e611'
-      
-      const payload = {
-        access_key: accessKey,
-        name: formData.name,
-        email: formData.email,
-        projectType: formData.projectType,
-        budget: formData.budget,
-        message: formData.message,
-        botcheck: formData.botcheck,
-        subject: `New Project Proposal from ${formData.name} (${formData.projectType})`,
-        from_name: 'Aashish Thakur Portfolio'
-      }
-
-      const response = await fetch('https://api.web3forms.com/submit', {
+      // Attempt server-side API route submission first
+      let response = await fetch('/api/contact', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(formData)
       })
 
-      const data = await response.json()
+      let data = await response.json()
+
+      // If the API route is not found (404), fallback to direct Web3Forms client-side submission
+      if (response.status === 404) {
+        console.warn('Backend API route not found. Falling back to direct client-side Web3Forms submission.')
+        const accessKey = process.env.NEXT_PUBLIC_WEB3FORMS_ACCESS_KEY || 'ca1b4399-6a58-4070-a57a-efd55de2e611'
+        
+        const payload = {
+          access_key: accessKey,
+          name: formData.name,
+          email: formData.email,
+          projectType: formData.projectType,
+          budget: formData.budget,
+          message: formData.message,
+          botcheck: formData.botcheck,
+          subject: `New Project Proposal from ${formData.name} (${formData.projectType})`,
+          from_name: 'Aashish Thakur Portfolio'
+        }
+
+        response = await fetch('https://api.web3forms.com/submit', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        })
+
+        data = await response.json()
+      }
 
       if (!response.ok || !data.success) {
-        throw new Error(data.message || 'Failed to submit proposal via Web3Forms.')
+        throw new Error(data.message || 'Failed to submit proposal.')
       }
 
       setSubmitSuccess(true)
     } catch (error: any) {
-      console.error('Web3Forms submission error:', error)
-      setSubmitError(error.message || 'Failed to send inquiry. Please check your network connection or try again.')
+      console.error('Submission error:', error)
+      setSubmitError(error.message || 'Failed to send inquiry. Please check your connection or try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -252,8 +282,8 @@ export default function Home() {
       </button>
 
       {/* Hero Section with sticky container */}
-      <div id="home" className="relative" style={{ height: '150vh' }}>
-        <div className="sticky top-0 h-screen overflow-hidden">
+      <div id="home" className="relative" style={{ height: (mounted && isMobile) ? 'auto' : '150vh' }}>
+        <div className={(mounted && isMobile) ? "relative" : "sticky top-0 h-screen overflow-hidden"}>
           <div className="grid lg:grid-cols-2 h-full">
             <div className="flex items-center justify-center p-6 md:p-8 lg:p-16 relative">
               <div 
@@ -264,7 +294,7 @@ export default function Home() {
                 }}
               >
                 <Image
-                  src="/images/profile.png"
+                  src="/images/profile.webp"
                   alt="Aashish Thakur"
                   fill
                   className="object-cover transition-all duration-700 group-hover:grayscale"
@@ -274,8 +304,75 @@ export default function Home() {
             </div>
 
             <div className="flex flex-col justify-between p-6 md:p-8 lg:p-16 relative">
+              {/* Mobile Hamburger Button */}
+              {mounted && (
+                <button
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                  className="fixed top-4 right-4 z-[10000] lg:hidden flex items-center justify-center w-10 h-10 rounded-full border border-black/10 dark:border-white/10 bg-white/50 dark:bg-black/50 backdrop-blur-md text-foreground shadow-sm hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer"
+                  aria-label="Toggle menu"
+                  aria-expanded={isMenuOpen}
+                >
+                  {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                </button>
+              )}
+
+              {/* Mobile Navigation Drawer */}
+              {mounted && (
+                <div
+                  className={`fixed inset-0 z-[9998] bg-background/95 backdrop-blur-lg flex flex-col items-center justify-center gap-8 transition-all duration-500 lg:hidden ${
+                    isMenuOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full pointer-events-none'
+                  }`}
+                >
+                  <nav className="flex flex-col items-center gap-6">
+                    <Link 
+                      href="#home" 
+                      onClick={(e) => { handleNavClick(e, '#home'); setIsMenuOpen(false); }}
+                      className="text-2xl font-bold text-foreground hover:opacity-60 transition-all"
+                    >
+                      Home
+                    </Link>
+                    <Link 
+                      href="#me" 
+                      onClick={(e) => { handleNavClick(e, '#me'); setIsMenuOpen(false); }}
+                      className="text-2xl font-bold text-foreground hover:opacity-60 transition-all"
+                    >
+                      Me
+                    </Link>
+                    <Link 
+                      href="#portfolio" 
+                      onClick={(e) => { handleNavClick(e, '#portfolio'); setIsMenuOpen(false); }}
+                      className="text-2xl font-bold text-foreground hover:opacity-60 transition-all"
+                    >
+                      Portfolio
+                    </Link>
+                    <Link 
+                      href="#services" 
+                      onClick={(e) => { handleNavClick(e, '#services'); setIsMenuOpen(false); }}
+                      className="text-2xl font-bold text-foreground hover:opacity-60 transition-all"
+                    >
+                      Services
+                    </Link>
+                    <Link 
+                      href="#video-showcase" 
+                      onClick={(e) => { handleNavClick(e, '#video-showcase'); setIsMenuOpen(false); }}
+                      className="text-2xl font-bold text-foreground hover:opacity-60 transition-all"
+                    >
+                      VFX Showreel
+                    </Link>
+                    <Link 
+                      href="#contact" 
+                      onClick={(e) => { handleNavClick(e, '#contact'); setIsMenuOpen(false); }}
+                      className="text-2xl font-bold text-foreground hover:opacity-60 transition-all"
+                    >
+                      Get in touch
+                    </Link>
+                  </nav>
+                </div>
+              )}
+
+              {/* Desktop Navigation Menu */}
               <nav 
-                className="fixed top-4 md:top-8 right-4 md:right-8 lg:right-16 flex flex-col items-end gap-1 md:gap-4 z-[9999] transition-all duration-500 pointer-events-auto"
+                className="fixed top-4 md:top-8 right-4 md:right-8 lg:right-16 hidden lg:flex flex-col items-end gap-1 md:gap-4 z-[9999] transition-all duration-500 pointer-events-auto"
                 style={{ opacity: navOpacity }}
               >
                 <Link 
@@ -420,8 +517,8 @@ export default function Home() {
           <div 
             className="transition-all duration-700"
             style={{
-              opacity: Math.min(1, Math.max(0, (scrollY - 600) / 200)),
-              transform: `translateY(${Math.max(0, 40 - (scrollY - 600) / 10)}px)`,
+              opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 600) / 200)),
+              transform: isMobile ? 'none' : `translateY(${Math.max(0, 40 - (scrollY - 600) / 10)}px)`,
             }}
           >
             <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground mb-12 md:mb-16 lg:mb-20">
@@ -431,8 +528,8 @@ export default function Home() {
               <div 
                 className="group overflow-hidden"
                 style={{
-                  opacity: Math.min(1, Math.max(0, (scrollY - 700) / 200)),
-                  transform: `translateY(${Math.max(0, 40 - (scrollY - 700) / 5)}px)`
+                  opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 700) / 200)),
+                  transform: isMobile ? 'none' : `translateY(${Math.max(0, 40 - (scrollY - 700) / 5)}px)`
                 }}
               >
                 <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg">
@@ -448,8 +545,8 @@ export default function Home() {
               <div 
                 className="group overflow-hidden"
                 style={{
-                  opacity: Math.min(1, Math.max(0, (scrollY - 750) / 200)),
-                  transform: `translateY(${Math.max(0, 40 - (scrollY - 750) / 5)}px)`
+                  opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 750) / 200)),
+                  transform: isMobile ? 'none' : `translateY(${Math.max(0, 40 - (scrollY - 750) / 5)}px)`
                 }}
               >
                 <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg">
@@ -465,8 +562,8 @@ export default function Home() {
               <div 
                 className="group overflow-hidden"
                 style={{
-                  opacity: Math.min(1, Math.max(0, (scrollY - 800) / 200)),
-                  transform: `translateY(${Math.max(0, 40 - (scrollY - 800) / 5)}px)`
+                  opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 800) / 200)),
+                  transform: isMobile ? 'none' : `translateY(${Math.max(0, 40 - (scrollY - 800) / 5)}px)`
                 }}
               >
                 <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg">
@@ -482,8 +579,8 @@ export default function Home() {
               <div 
                 className="group overflow-hidden"
                 style={{
-                  opacity: Math.min(1, Math.max(0, (scrollY - 850) / 200)),
-                  transform: `translateY(${Math.max(0, 40 - (scrollY - 850) / 5)}px)`
+                  opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 850) / 200)),
+                  transform: isMobile ? 'none' : `translateY(${Math.max(0, 40 - (scrollY - 850) / 5)}px)`
                 }}
               >
                 <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg">
@@ -509,8 +606,8 @@ export default function Home() {
           <div 
             className="transition-all duration-700"
             style={{
-              opacity: Math.min(1, Math.max(0, (scrollY - 1800) / 300)),
-              transform: `translateY(${Math.max(0, 60 - (scrollY - 1800) / 10)}px)`,
+              opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 1800) / 300)),
+              transform: isMobile ? 'none' : `translateY(${Math.max(0, 60 - (scrollY - 1800) / 10)}px)`,
             }}
           >
             <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-4 md:mb-6">
@@ -524,8 +621,8 @@ export default function Home() {
           <div 
             className="relative w-full max-w-5xl mx-auto"
             style={{
-              opacity: Math.min(1, Math.max(0, (scrollY - 1900) / 300)),
-              transform: `scale(${Math.min(1, Math.max(0.9, 0.9 + (scrollY - 1900) / 3000))})`,
+              opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 1900) / 300)),
+              transform: isMobile ? 'none' : `scale(${Math.min(1, Math.max(0.9, 0.9 + (scrollY - 1900) / 3000))})`,
             }}
           >
             {/* Main Video Player */}
@@ -533,10 +630,12 @@ export default function Home() {
               <video
                 key={activeVideo}
                 src={videos[activeVideo].src}
+                poster={videos[activeVideo].poster}
                 autoPlay
                 loop
                 muted
                 playsInline
+                preload="metadata"
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
@@ -588,11 +687,11 @@ export default function Home() {
                   }`}
                 >
                   <div className="w-32 md:w-40 aspect-video bg-gray-800 relative">
-                    <video
-                      src={video.src}
-                      muted
-                      playsInline
-                      className="w-full h-full object-cover"
+                    <Image
+                      src={video.poster || ''}
+                      alt={video.title}
+                      fill
+                      className="object-cover"
                     />
                     <div className="absolute inset-0 bg-black/30" />
                   </div>
@@ -609,8 +708,8 @@ export default function Home() {
           <h2 
             className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-16 md:mb-24 text-foreground text-center"
             style={{
-              opacity: Math.min(1, Math.max(0, (scrollY - 2200) / 400)),
-              transform: `translateY(${Math.max(0, 40 - (scrollY - 2200) / 12)}px)`
+              opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 2200) / 400)),
+              transform: isMobile ? 'none' : `translateY(${Math.max(0, 40 - (scrollY - 2200) / 12)}px)`
             }}
           >
             Services
@@ -621,8 +720,8 @@ export default function Home() {
             <div 
               className="space-y-4 group"
               style={{
-                opacity: Math.min(1, Math.max(0, (scrollY - 2400) / 300)),
-                transform: `translateY(${Math.max(0, 50 - (scrollY - 2400) / 8)}px)`
+                opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 2400) / 300)),
+                transform: isMobile ? 'none' : `translateY(${Math.max(0, 50 - (scrollY - 2400) / 8)}px)`
               }}
             >
               <div className="text-5xl md:text-6xl font-bold text-gray-300 dark:text-zinc-700 group-hover:text-black dark:group-hover:text-white transition-colors duration-300">
@@ -640,8 +739,8 @@ export default function Home() {
             <div 
               className="space-y-4 group"
               style={{
-                opacity: Math.min(1, Math.max(0, (scrollY - 2500) / 300)),
-                transform: `translateY(${Math.max(0, 50 - (scrollY - 2500) / 8)}px)`
+                opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 2500) / 300)),
+                transform: isMobile ? 'none' : `translateY(${Math.max(0, 50 - (scrollY - 2500) / 8)}px)`
               }}
             >
               <div className="text-5xl md:text-6xl font-bold text-gray-300 dark:text-zinc-700 group-hover:text-black dark:group-hover:text-white transition-colors duration-300">
@@ -659,8 +758,8 @@ export default function Home() {
             <div 
               className="space-y-4 group"
               style={{
-                opacity: Math.min(1, Math.max(0, (scrollY - 2600) / 300)),
-                transform: `translateY(${Math.max(0, 50 - (scrollY - 2600) / 8)}px)`
+                opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 2600) / 300)),
+                transform: isMobile ? 'none' : `translateY(${Math.max(0, 50 - (scrollY - 2600) / 8)}px)`
               }}
             >
               <div className="text-5xl md:text-6xl font-bold text-gray-300 dark:text-zinc-700 group-hover:text-black dark:group-hover:text-white transition-colors duration-300">
@@ -678,8 +777,8 @@ export default function Home() {
             <div 
               className="space-y-4 group"
               style={{
-                opacity: Math.min(1, Math.max(0, (scrollY - 2700) / 300)),
-                transform: `translateY(${Math.max(0, 50 - (scrollY - 2700) / 8)}px)`
+                opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 2700) / 300)),
+                transform: isMobile ? 'none' : `translateY(${Math.max(0, 50 - (scrollY - 2700) / 8)}px)`
               }}
             >
               <div className="text-5xl md:text-6xl font-bold text-gray-300 dark:text-zinc-700 group-hover:text-black dark:group-hover:text-white transition-colors duration-300">
@@ -697,8 +796,8 @@ export default function Home() {
             <div 
               className="space-y-4 group"
               style={{
-                opacity: Math.min(1, Math.max(0, (scrollY - 2800) / 300)),
-                transform: `translateY(${Math.max(0, 50 - (scrollY - 2800) / 8)}px)`
+                opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 2800) / 300)),
+                transform: isMobile ? 'none' : `translateY(${Math.max(0, 50 - (scrollY - 2800) / 8)}px)`
               }}
             >
               <div className="text-5xl md:text-6xl font-bold text-gray-300 dark:text-zinc-700 group-hover:text-black dark:group-hover:text-white transition-colors duration-300">
@@ -716,8 +815,8 @@ export default function Home() {
             <div 
               className="space-y-4 group"
               style={{
-                opacity: Math.min(1, Math.max(0, (scrollY - 2900) / 300)),
-                transform: `translateY(${Math.max(0, 50 - (scrollY - 2900) / 8)}px)`
+                opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 2900) / 300)),
+                transform: isMobile ? 'none' : `translateY(${Math.max(0, 50 - (scrollY - 2900) / 8)}px)`
               }}
             >
               <div className="text-5xl md:text-6xl font-bold text-gray-300 dark:text-zinc-700 group-hover:text-black dark:group-hover:text-white transition-colors duration-300">
@@ -739,8 +838,8 @@ export default function Home() {
           <h2 
             className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-8 md:mb-12"
             style={{
-              opacity: Math.min(1, Math.max(0, (scrollY - 3200) / 400)),
-              transform: `translateY(${Math.max(0, 40 - (scrollY - 3200) / 12)}px)`
+              opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 3200) / 400)),
+              transform: isMobile ? 'none' : `translateY(${Math.max(0, 40 - (scrollY - 3200) / 12)}px)`
             }}
           >
             Start Your Project
@@ -749,8 +848,8 @@ export default function Home() {
           <p 
             className="text-lg md:text-xl text-gray-400 mb-12 md:mb-16 max-w-2xl"
             style={{
-              opacity: Math.min(1, Math.max(0, (scrollY - 3300) / 300)),
-              transform: `translateY(${Math.max(0, 30 - (scrollY - 3300) / 10)}px)`
+              opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 3300) / 300)),
+              transform: isMobile ? 'none' : `translateY(${Math.max(0, 30 - (scrollY - 3300) / 10)}px)`
             }}
           >
             Let's collaborate and bring your ideas to life. Select your project details below.
@@ -760,8 +859,8 @@ export default function Home() {
             <div 
               className="bg-zinc-900/50 border border-zinc-800/80 backdrop-blur-md p-8 md:p-16 text-center space-y-6 md:space-y-8 rounded-lg transition-all duration-500 scale-100 opacity-100"
               style={{
-                opacity: Math.min(1, Math.max(0, (scrollY - 3400) / 300)),
-                transform: `translateY(${Math.max(0, 40 - (scrollY - 3400) / 10)}px)`
+                opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 3400) / 300)),
+                transform: isMobile ? 'none' : `translateY(${Math.max(0, 40 - (scrollY - 3400) / 10)}px)`
               }}
             >
               <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 mb-4 animate-bounce">
@@ -794,8 +893,8 @@ export default function Home() {
               onSubmit={handleSubmit}
               className="space-y-10 md:space-y-12"
               style={{
-                opacity: Math.min(1, Math.max(0, (scrollY - 3400) / 300)),
-                transform: `translateY(${Math.max(0, 40 - (scrollY - 3400) / 10)}px)`
+                opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 3400) / 300)),
+                transform: isMobile ? 'none' : `translateY(${Math.max(0, 40 - (scrollY - 3400) / 10)}px)`
               }}
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -848,6 +947,7 @@ export default function Home() {
                         type="button"
                         onClick={() => selectProjectType(type)}
                         disabled={isSubmitting}
+                        aria-pressed={isSelected}
                         className={`py-3 md:py-4 px-4 border text-center font-semibold text-sm transition-all duration-300 cursor-pointer select-none rounded-md ${
                           isSelected
                             ? 'border-white bg-white text-black font-bold scale-[1.03] shadow-lg shadow-white/5'
@@ -875,6 +975,7 @@ export default function Home() {
                         type="button"
                         onClick={() => selectBudget(budget)}
                         disabled={isSubmitting}
+                        aria-pressed={isSelected}
                         className={`py-3 md:py-4 px-3 border text-center font-semibold text-xs md:text-sm transition-all duration-300 cursor-pointer select-none rounded-md ${
                           isSelected
                             ? 'border-white bg-white text-black font-bold scale-[1.03] shadow-lg shadow-white/5'
@@ -969,7 +1070,7 @@ export default function Home() {
           <div 
             className="mt-16 md:mt-20 pt-12 border-t border-gray-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-6"
             style={{
-              opacity: Math.min(1, Math.max(0, (scrollY - 3600) / 300)),
+              opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 3600) / 300)),
             }}
           >
             <div className="space-y-2">
