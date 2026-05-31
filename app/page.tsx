@@ -36,7 +36,7 @@ export default function Home() {
     },
     {
       src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/new-SBns0FE4ozZLwbRCVRt68AHyxp2ESR.mp4",
-      poster: "/images/poster-2.jpg",
+      poster: "/images/gayak-thumbnail.webp",
       title: "GAYAK - Title Sequence",
       description: "Film Title Design & Animation",
       tags: ["Motion Graphics", "Cinema 4D"]
@@ -242,7 +242,7 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground transition-colors duration-300">
+    <main className="min-h-screen overflow-x-hidden bg-background text-foreground transition-colors duration-300">
       <button
         onClick={scrollToTop}
         className={`fixed bottom-6 right-6 md:bottom-8 md:right-8 z-[9999] bg-black dark:bg-white text-white dark:text-black p-3 md:p-4 rounded-full shadow-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-all duration-300 ${
@@ -463,7 +463,7 @@ export default function Home() {
               
               <div id="me"></div>
               <div 
-                className="absolute bottom-0 left-0 right-0 p-4 md:p-8 lg:p-16 transition-all duration-1000 ease-out"
+                className="relative mt-8 lg:absolute lg:bottom-0 lg:left-0 lg:right-0 p-4 md:p-8 lg:p-16 lg:mt-0 transition-all duration-1000 ease-out"
                 style={{
                   opacity: aboutMeProgress,
                   transform: `translateY(${(1 - aboutMeProgress) * 50}px)`,
