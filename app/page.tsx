@@ -176,46 +176,30 @@ export default function Home() {
     }
 
     try {
-      // Attempt server-side API route submission first
-      let response = await fetch('/api/contact', {
+      const accessKey = process.env.NEXT_PUBLIC_WEB3FORMS_ACCESS_KEY || 'ca1b4399-6a58-4070-a57a-efd55de2e611'
+      
+      const payload = {
+        access_key: accessKey,
+        name: formData.name,
+        email: formData.email,
+        projectType: formData.projectType,
+        budget: formData.budget,
+        message: formData.message,
+        botcheck: formData.botcheck,
+        subject: `New Project Proposal from ${formData.name} (${formData.projectType})`,
+        from_name: 'Aashish Thakur Portfolio'
+      }
+
+      const response = await fetch('https://api.web3forms.com/submit', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       })
 
-      let data = await response.json()
-
-      // If the API route is not found (404), fallback to direct Web3Forms client-side submission
-      if (response.status === 404) {
-        console.warn('Backend API route not found. Falling back to direct client-side Web3Forms submission.')
-        const accessKey = process.env.NEXT_PUBLIC_WEB3FORMS_ACCESS_KEY || 'ca1b4399-6a58-4070-a57a-efd55de2e611'
-        
-        const payload = {
-          access_key: accessKey,
-          name: formData.name,
-          email: formData.email,
-          projectType: formData.projectType,
-          budget: formData.budget,
-          message: formData.message,
-          botcheck: formData.botcheck,
-          subject: `New Project Proposal from ${formData.name} (${formData.projectType})`,
-          from_name: 'Aashish Thakur Portfolio'
-        }
-
-        response = await fetch('https://api.web3forms.com/submit', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        })
-
-        data = await response.json()
-      }
+      const data = await response.json()
 
       if (!response.ok || !data.success) {
         throw new Error(data.message || 'Failed to submit proposal.')
