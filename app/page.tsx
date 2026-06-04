@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useTheme } from 'next-themes'
 import { Menu, X } from 'lucide-react'
 
@@ -20,6 +20,9 @@ export default function Home() {
   })
   const [submitError, setSubmitError] = useState('')
   const [activeVideo, setActiveVideo] = useState(0)
+  const [displayedVideo, setDisplayedVideo] = useState(0)
+  const [loadedVideos, setLoadedVideos] = useState<Record<number, boolean>>({ 0: true })
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -29,7 +32,7 @@ export default function Home() {
   const videos = [
     {
       src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/VFX%20-%20Title-B0g7yQ6SdCb5QxXL7uDiv15fRt6ivl.mp4",
-      poster: "/images/poster-1.jpg",
+      poster: "/images/vfx-thumbnail.png",
       title: "Studio Signature Sequence",
       description: "Visual Effects & Motion Design",
       tags: ["After Effects", "VFX"]
@@ -240,6 +243,34 @@ export default function Home() {
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
+
+  const handleVideoChange = (index: number) => {
+    if (index === activeVideo) return;
+    setActiveVideo(index);
+    if (loadedVideos[index] || (videoRefs.current[index] && videoRefs.current[index]!.readyState >= 2)) {
+      setDisplayedVideo(index);
+    }
+  };
+
+  const handleVideoLoaded = (index: number) => {
+    setLoadedVideos(prev => ({ ...prev, [index]: true }));
+    if (activeVideo === index) {
+      setDisplayedVideo(index);
+    }
+  };
+
+  useEffect(() => {
+    videos.forEach((_, index) => {
+      const vid = videoRefs.current[index];
+      if (vid) {
+        if (index === displayedVideo || index === activeVideo) {
+          vid.play().catch(() => {});
+        } else {
+          vid.pause();
+        }
+      }
+    });
+  }, [displayedVideo, activeVideo, videos]);
 
   return (
     <main className="min-h-screen bg-background text-foreground transition-colors duration-300">
@@ -610,24 +641,34 @@ export default function Home() {
             }}
           >
             {/* Main Video Player */}
-            <div className="relative aspect-video w-full overflow-hidden rounded-lg shadow-2xl shadow-black/50 group">
-              <video
-                key={activeVideo}
-                src={videos[activeVideo].src}
-                poster={videos[activeVideo].poster}
-                autoPlay
-                loop
-                muted
-                playsInline
-                preload="metadata"
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+            <div className="relative aspect-video w-full overflow-hidden rounded-lg shadow-2xl shadow-black/50 group bg-black">
+              {videos.map((video, index) => {
+                const isDisplayed = index === displayedVideo;
+                const isRequested = index === activeVideo;
+                return (
+                  <video
+                    key={video.src}
+                    ref={el => { videoRefs.current[index] = el; }}
+                    src={video.src}
+                    poster={loadedVideos[index] ? undefined : video.poster}
+                    autoPlay={isDisplayed || isRequested}
+                    loop
+                    muted
+                    playsInline
+                    preload={isRequested ? "auto" : "metadata"}
+                    onLoadedData={() => handleVideoLoaded(index)}
+                    className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ease-in-out group-hover:scale-105 ${
+                      isDisplayed ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
+                    }`}
+                  />
+                );
+              })}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none z-20" />
               
               {/* Navigation Arrows */}
               <button
-                onClick={() => setActiveVideo((prev) => (prev === 0 ? videos.length - 1 : prev - 1))}
-                className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white transition-all duration-300 opacity-0 group-hover:opacity-100"
+                onClick={() => handleVideoChange(activeVideo === 0 ? videos.length - 1 : activeVideo - 1)}
+                className="absolute z-30 left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white transition-all duration-300 opacity-0 group-hover:opacity-100"
                 aria-label="Previous video"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -635,8 +676,8 @@ export default function Home() {
                 </svg>
               </button>
               <button
-                onClick={() => setActiveVideo((prev) => (prev === videos.length - 1 ? 0 : prev + 1))}
-                className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white transition-all duration-300 opacity-0 group-hover:opacity-100"
+                onClick={() => handleVideoChange(activeVideo === videos.length - 1 ? 0 : activeVideo + 1)}
+                className="absolute z-30 right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white transition-all duration-300 opacity-0 group-hover:opacity-100"
                 aria-label="Next video"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -664,7 +705,7 @@ export default function Home() {
               {videos.map((video, index) => (
                 <button
                   key={index}
-                  onClick={() => setActiveVideo(index)}
+                  onClick={() => handleVideoChange(index)}
                   className={`relative overflow-hidden rounded-lg transition-all duration-300 ${
                     activeVideo === index 
                       ? 'ring-2 ring-white scale-105' 
@@ -692,7 +733,7 @@ export default function Home() {
                 return (
                   <button
                     key={index}
-                    onClick={() => setActiveVideo(index)}
+                    onClick={() => handleVideoChange(index)}
                     className={`px-4 py-2 text-sm rounded-full border transition-all duration-300 active:scale-95 ${
                       activeVideo === index 
                         ? 'bg-white text-black border-white' 
