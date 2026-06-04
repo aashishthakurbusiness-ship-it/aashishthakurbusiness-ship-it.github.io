@@ -242,7 +242,7 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-background text-foreground transition-colors duration-300">
+    <main className="min-h-screen bg-background text-foreground transition-colors duration-300">
       <button
         onClick={scrollToTop}
         className={`fixed bottom-6 right-6 md:bottom-8 md:right-8 z-[9999] bg-black dark:bg-white text-white dark:text-black p-3 md:p-4 rounded-full shadow-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-all duration-300 ${
@@ -659,7 +659,8 @@ export default function Home() {
             </div>
             
             {/* Video Thumbnails/Indicators */}
-            <div className="mt-8 flex gap-4 justify-center">
+            {/* Desktop Thumbnails */}
+            <div className="mt-8 hidden lg:flex gap-4 justify-center">
               {videos.map((video, index) => (
                 <button
                   key={index}
@@ -682,6 +683,26 @@ export default function Home() {
                   <p className="text-xs text-white mt-2 text-center truncate px-1">{video.title}</p>
                 </button>
               ))}
+            </div>
+
+            {/* Mobile Project Selector Buttons */}
+            <div className="mt-6 flex lg:hidden flex-wrap gap-3 justify-center">
+              {videos.map((video, index) => {
+                const shortTitle = video.title.split(' -')[0].replace(' Sequence', '');
+                return (
+                  <button
+                    key={index}
+                    onClick={() => setActiveVideo(index)}
+                    className={`px-4 py-2 text-sm rounded-full border transition-all duration-300 active:scale-95 ${
+                      activeVideo === index 
+                        ? 'bg-white text-black border-white' 
+                        : 'bg-black text-white border-white/20 hover:border-white/50 hover:bg-white/10'
+                    }`}
+                  >
+                    {shortTitle}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
