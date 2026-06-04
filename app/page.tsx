@@ -526,7 +526,7 @@ export default function Home() {
 
       <section 
         id="portfolio" 
-        className="min-h-screen bg-background text-foreground py-12 md:py-16 lg:py-20 px-6 md:px-12 lg:px-16 transition-colors duration-300"
+        className="lg:min-h-screen bg-background text-foreground py-12 md:py-16 lg:py-20 px-6 md:px-12 lg:px-16 transition-colors duration-300"
       >
         <div className="max-w-7xl mx-auto">
           <div 
@@ -615,7 +615,7 @@ export default function Home() {
       {/* Video Showcase Section */}
       <section 
         id="video-showcase" 
-        className="min-h-screen bg-black py-16 md:py-24 px-6 md:px-12 lg:px-16"
+        className="lg:min-h-screen bg-black py-16 md:py-24 px-6 md:px-12 lg:px-16"
       >
         <div className="max-w-7xl mx-auto">
           <div 
@@ -749,7 +749,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="services" className="min-h-screen bg-background text-foreground px-6 md:px-12 lg:px-20 py-20 transition-colors duration-300">
+      <section id="services" className="lg:min-h-screen bg-background text-foreground px-6 md:px-12 lg:px-20 py-20 transition-colors duration-300">
         <div className="max-w-[1600px] mx-auto">
           <h2 
             className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-16 md:mb-24 text-foreground text-center"
@@ -879,7 +879,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="contact" className="min-h-screen bg-black text-white px-6 md:px-12 lg:px-20 py-20">
+      <section id="contact" className="lg:min-h-screen bg-black text-white px-6 md:px-12 lg:px-20 py-20">
         <div className="max-w-5xl mx-auto">
           <h2 
             className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-8 md:mb-12"
