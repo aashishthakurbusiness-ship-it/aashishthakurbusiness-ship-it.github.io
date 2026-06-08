@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Montserrat, Special_Elite } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { ThemeProvider } from "@/components/theme-provider"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { GlobalThemeInject } from "@/components/global-theme-inject"
 import "./globals.css"
 
 const _geist = Geist({
@@ -117,6 +118,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <GlobalThemeInject />
           <ThemeToggle />
           {children}
         </ThemeProvider>

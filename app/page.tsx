@@ -5,10 +5,352 @@ import Link from 'next/link'
 import { useEffect, useState, useRef } from 'react'
 import { useTheme } from 'next-themes'
 import { Menu, X } from 'lucide-react'
+import { doc, getDoc, collection, getDocs } from "firebase/firestore"
+import { db } from "@/lib/firebase"
+export interface TypographySettings {
+  fontFamily: string;
+  fontSize: string;
+  fontWeight: string;
+  letterSpacing: string;
+  lineHeight: string;
+  textAlign: string;
+  color: string;
+  hoverColor: string;
+}
+
+export interface ThemeSettings {
+  backgroundColor: string;
+  textColor: string;
+  accentColor: string;
+}
+
+export interface HeroStyles {
+  typography: {
+    name: TypographySettings;
+    title: TypographySettings;
+    subtitle: TypographySettings;
+    description: TypographySettings;
+    ctaText: TypographySettings;
+  };
+  theme: {
+    light: ThemeSettings;
+    dark: ThemeSettings;
+  };
+}
+
+export interface HeroData {
+  name: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  ctaText: string;
+  profileImageUrl: string;
+  styles?: HeroStyles;
+}
+
+export interface SocialPlatform {
+  id: string;
+  name: string;
+  url: string;
+  enabled: boolean;
+  openInNewTab: boolean;
+}
+
+export interface SocialMediaData {
+  platforms: SocialPlatform[];
+}
+
+export interface Skill {
+  id: string;
+  name: string;
+}
+
+export interface ShowreelVideo {
+  id: string;
+  title: string;
+  description: string;
+  tags: string;
+  thumbnailUrl: string;
+  videoUrl: string;
+  order: number;
+  enabled: boolean;
+  featured: boolean;
+}
+
+const DEFAULT_SHOWREELS: ShowreelVideo[] = [
+  {
+    id: "showreel-1",
+    title: "Studio Signature Sequence",
+    description: "Visual Effects & Motion Design",
+    tags: "After Effects, VFX",
+    thumbnailUrl: "/images/vfx-thumbnail.png",
+    videoUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/VFX%20-%20Title-B0g7yQ6SdCb5QxXL7uDiv15fRt6ivl.mp4",
+    order: 0,
+    enabled: true,
+    featured: true
+  },
+  {
+    id: "showreel-2",
+    title: "GAYAK - Title Sequence",
+    description: "Film Title Design & Animation",
+    tags: "Motion Graphics, Cinema 4D",
+    thumbnailUrl: "/images/gayak-thumbnail.webp",
+    videoUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/new-SBns0FE4ozZLwbRCVRt68AHyxp2ESR.mp4",
+    order: 1,
+    enabled: true,
+    featured: true
+  }
+];
+
+export interface ContactData {
+  title: string;
+  subtitle: string;
+  email: string;
+  phone: string;
+  location: string;
+  ctaText: string;
+  availability: string;
+  responseTime: string;
+  enableForm: boolean;
+  showEmail: boolean;
+  showPhone: boolean;
+}
+
+const DEFAULT_CONTACT_DATA: ContactData = {
+  title: 'Start Your Project',
+  subtitle: "Let's collaborate and bring your ideas to life. Select your project details below.",
+  email: 'aashishthakurbusiness@gmail.com',
+  phone: '+1 234 567 8900',
+  location: 'Los Angeles, CA',
+  ctaText: 'Send Proposal',
+  availability: 'Available for freelance work',
+  responseTime: 'within 24 hours',
+  enableForm: true,
+  showEmail: true,
+  showPhone: false,
+};
+
+export interface GlobalSettingsData {
+  siteName: string;
+  siteDescription: string;
+  siteEmail: string;
+  siteLocation: string;
+  copyrightText: string;
+  seoTitle: string;
+  seoDescription: string;
+  ogTitle: string;
+  ogDescription: string;
+}
+
+const DEFAULT_GLOBAL_SETTINGS: GlobalSettingsData = {
+  siteName: 'Aashish Thakur Portfolio',
+  siteDescription: 'Director & VFX Artist portfolio featuring cinematic visual effects, UI/UX design, and AI-powered healthcare solutions.',
+  siteEmail: 'aashishthakurbusiness@gmail.com',
+  siteLocation: 'Remote',
+  copyrightText: '© 2026 Aashish Thakur. All rights reserved.',
+  seoTitle: 'Aashish Thakur - Director & VFX Artist',
+  seoDescription: 'Explore portfolio projects in VFX, UI/UX, and AI-powered healthcare.',
+  ogTitle: 'Aashish Thakur - Director & VFX Artist',
+  ogDescription: 'Portfolio of Aashish Thakur - Director & VFX Artist. Explore cinematic visual effects and design.',
+};
+
+export interface Project {
+  id: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  category: string;
+  tags: string;
+  thumbnailUrl: string;
+  videoUrl: string;
+  projectUrl: string;
+  client: string;
+  status: string;
+  order: number;
+  enabled: boolean;
+  featured: boolean;
+}
+
+const DEFAULT_PROJECTS: Project[] = [
+  {
+    id: "proj-1",
+    title: "GAYAK Movie Poster - Cinematic VFX Design",
+    subtitle: "Poster Design",
+    description: "Visual effects and title design work.",
+    category: "VFX",
+    tags: "vfx, design",
+    thumbnailUrl: "/images/poster-1.jpg",
+    videoUrl: "",
+    projectUrl: "",
+    client: "",
+    status: "Completed",
+    order: 0,
+    enabled: true,
+    featured: true
+  },
+  {
+    id: "proj-2",
+    title: "GAYAK Movie Poster - Visual Effects Showcase",
+    subtitle: "Poster Design",
+    description: "Visual effects and title design work.",
+    category: "VFX",
+    tags: "vfx, design",
+    thumbnailUrl: "/images/poster-2.jpg",
+    videoUrl: "",
+    projectUrl: "",
+    client: "",
+    status: "Completed",
+    order: 1,
+    enabled: true,
+    featured: true
+  },
+  {
+    id: "proj-3",
+    title: "GAYAK Movie Poster - Sunset Composition",
+    subtitle: "Poster Design",
+    description: "Visual effects and title design work.",
+    category: "VFX",
+    tags: "vfx, design",
+    thumbnailUrl: "/images/poster-3.jpg",
+    videoUrl: "",
+    projectUrl: "",
+    client: "",
+    status: "Completed",
+    order: 2,
+    enabled: true,
+    featured: true
+  },
+  {
+    id: "proj-4",
+    title: "GAYAK Movie Poster - Ensemble Cast",
+    subtitle: "Poster Design",
+    description: "Visual effects and title design work.",
+    category: "VFX",
+    tags: "vfx, design",
+    thumbnailUrl: "/images/poster-4.jpg",
+    videoUrl: "",
+    projectUrl: "",
+    client: "",
+    status: "Completed",
+    order: 3,
+    enabled: true,
+    featured: true
+  }
+];
+
+export interface ServiceItem {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  enabled: boolean;
+}
+
+export interface ServicesData {
+  title: string;
+  subtitle: string;
+  services: ServiceItem[];
+}
+
+const DEFAULT_SERVICES_DATA: ServicesData = {
+  title: "Services",
+  subtitle: "",
+  services: [
+    {
+      id: "1",
+      title: "VFX & Video Editing",
+      description: "Professional visual effects, compositing, color grading, and cinematic video editing for films, commercials, and digital content.",
+      icon: "",
+      enabled: true
+    },
+    {
+      id: "2",
+      title: "UI/UX Design",
+      description: "Creating intuitive and visually stunning user interfaces with a focus on user experience and modern design principles.",
+      icon: "",
+      enabled: true
+    },
+    {
+      id: "3",
+      title: "Web Development",
+      description: "Full-stack web development using modern technologies, building scalable and performant web applications.",
+      icon: "",
+      enabled: true
+    },
+    {
+      id: "4",
+      title: "Brand Identity",
+      description: "Developing distinctive visual identities through logo design, color systems, and cohesive brand assets.",
+      icon: "",
+      enabled: true
+    },
+    {
+      id: "5",
+      title: "Consulting",
+      description: "Technology and creative consulting to help guide your digital transformation and creative projects.",
+      icon: "",
+      enabled: true
+    },
+    {
+      id: "6",
+      title: "Motion Graphics",
+      description: "Dynamic motion graphics and animations for engaging visual storytelling and brand communication.",
+      icon: "",
+      enabled: true
+    }
+  ]
+};
+
+export interface AboutMeData {
+  title: string;
+  intro: string;
+  biography: string;
+  experience: string;
+  profileImageUrl: string;
+  skills: Skill[];
+}
+
+const DEFAULT_ABOUT_ME_DATA: AboutMeData = {
+  title: "AASHISH THAKUR",
+  intro: "DIRECTOR & VFX ARTIST",
+  biography: "Aashish Thakur is an aspiring innovator, developer, and design thinker passionate about building technology that solves real-world problems. Currently working on MediTrack+ and GlucoTrack+, focusing on AI-powered healthcare solutions, while also exploring web development, cloud technologies, and product design.",
+  experience: "",
+  profileImageUrl: "/images/profile.webp",
+  skills: []
+};
+
+const DEFAULT_SOCIAL_DATA: SocialMediaData = {
+  platforms: [
+    { id: 'email', name: 'Email', url: 'mailto:aashishthakurbusiness@gmail.com', enabled: true, openInNewTab: true },
+    { id: 'github', name: 'GitHub', url: 'https://github.com/aashishthakurbusiness-ship-it', enabled: true, openInNewTab: true },
+    { id: 'linkedin', name: 'LinkedIn', url: 'https://www.linkedin.com/in/aashishthakurbusiness', enabled: true, openInNewTab: true },
+    { id: 'instagram', name: 'Instagram', url: '', enabled: false, openInNewTab: true },
+    { id: 'youtube', name: 'YouTube', url: '', enabled: false, openInNewTab: true },
+    { id: 'twitter', name: 'X/Twitter', url: '', enabled: false, openInNewTab: true },
+    { id: 'behance', name: 'Behance', url: '', enabled: false, openInNewTab: true },
+    { id: 'artstation', name: 'ArtStation', url: '', enabled: false, openInNewTab: true },
+  ]
+};
 
 export default function Home() {
   const [scrollY, setScrollY] = useState(0)
-  const [hackText, setHackText] = useState('Aashish Thakur')
+  const [isLoadingHero, setIsLoadingHero] = useState(true)
+  const [socialData, setSocialData] = useState<SocialMediaData>(DEFAULT_SOCIAL_DATA)
+  const [aboutMeData, setAboutMeData] = useState<AboutMeData>(DEFAULT_ABOUT_ME_DATA)
+  const [servicesData, setServicesData] = useState<ServicesData>(DEFAULT_SERVICES_DATA)
+  const [globalSettings, setGlobalSettings] = useState<GlobalSettingsData>(DEFAULT_GLOBAL_SETTINGS)
+  const [projectsData, setProjectsData] = useState<Project[]>(DEFAULT_PROJECTS)
+  const [showreelData, setShowreelData] = useState<ShowreelVideo[]>(DEFAULT_SHOWREELS)
+  const [contactData, setContactData] = useState<ContactData>(DEFAULT_CONTACT_DATA)
+  const [heroData, setHeroData] = useState<HeroData>({
+    name: 'Aashish Thakur',
+    title: 'Director & VFX Artist',
+    subtitle: 'Innovator & Design Thinker',
+    description: 'Building AI-powered healthcare solutions',
+    ctaText: "Let's create",
+    profileImageUrl: '/images/profile.webp'
+  })
+  const [hackText, setHackText] = useState(heroData.name)
   const [isHacking, setIsHacking] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
@@ -29,29 +371,101 @@ export default function Home() {
   const [isMobile, setIsMobile] = useState(false)
   const [heroHeight, setHeroHeight] = useState(800)
 
-  const videos = [
-    {
-      src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/VFX%20-%20Title-B0g7yQ6SdCb5QxXL7uDiv15fRt6ivl.mp4",
-      poster: "/images/vfx-thumbnail.png",
-      title: "Studio Signature Sequence",
-      description: "Visual Effects & Motion Design",
-      tags: ["After Effects", "VFX"]
-    },
-    {
-      src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/new-SBns0FE4ozZLwbRCVRt68AHyxp2ESR.mp4",
-      poster: "/images/gayak-thumbnail.webp",
-      title: "GAYAK - Title Sequence",
-      description: "Film Title Design & Animation",
-      tags: ["Motion Graphics", "Cinema 4D"]
-    }
-  ]
+  const visibleVideos = showreelData.filter(v => v.enabled)
   const [showScrollTop, setShowScrollTop] = useState(false)
   const [isOverDarkSection, setIsOverDarkSection] = useState(false)
   const [mounted, setMounted] = useState(false)
   const { resolvedTheme } = useTheme()
 
   useEffect(() => {
-    startHackEffect()
+    const fetchHeroData = async () => {
+      try {
+        const [heroSnap, socialSnap, aboutMeSnap, servicesSnap, contactSnap, globalSnap, projectsSnap, showreelsSnap] = await Promise.all([
+          getDoc(doc(db, "site_content", "hero")),
+          getDoc(doc(db, "settings", "social_media")),
+          getDoc(doc(db, "site_content", "about_me")),
+          getDoc(doc(db, "site_content", "services")),
+          getDoc(doc(db, "site_content", "contact")),
+          getDoc(doc(db, "settings", "global")),
+          getDocs(collection(db, "projects")),
+          getDocs(collection(db, "showreels"))
+        ]);
+
+        if (globalSnap.exists()) {
+          setGlobalSettings(globalSnap.data() as GlobalSettingsData);
+        }
+
+        if (contactSnap.exists()) {
+          setContactData(contactSnap.data() as ContactData);
+        }
+
+        if (!showreelsSnap.empty) {
+          const showreels: ShowreelVideo[] = [];
+          showreelsSnap.forEach((doc) => {
+            showreels.push({ id: doc.id, ...doc.data() } as ShowreelVideo);
+          });
+          showreels.sort((a, b) => a.order - b.order);
+          setShowreelData(showreels);
+        }
+        
+        if (!projectsSnap.empty) {
+          const projects: Project[] = [];
+          projectsSnap.forEach((doc) => {
+            projects.push({ id: doc.id, ...doc.data() } as Project);
+          });
+          projects.sort((a, b) => a.order - b.order);
+          setProjectsData(projects);
+        }
+
+        if (servicesSnap.exists()) {
+          const sData = servicesSnap.data() as Partial<ServicesData>;
+          setServicesData({ ...DEFAULT_SERVICES_DATA, ...sData, services: sData.services || DEFAULT_SERVICES_DATA.services });
+        }
+
+        if (aboutMeSnap.exists()) {
+          const aData = aboutMeSnap.data() as Partial<AboutMeData>;
+          setAboutMeData({ ...DEFAULT_ABOUT_ME_DATA, ...aData, skills: aData.skills || DEFAULT_ABOUT_ME_DATA.skills });
+        }
+
+        if (heroSnap.exists()) {
+          const data = heroSnap.data() as HeroData;
+          setHeroData({
+            name: data.name || 'Aashish Thakur',
+            title: data.title || 'Director & VFX Artist',
+            subtitle: data.subtitle || 'Innovator & Design Thinker',
+            description: data.description || 'Building AI-powered healthcare solutions',
+            ctaText: data.ctaText || "Let's create",
+            profileImageUrl: data.profileImageUrl || '/images/profile.webp',
+            styles: data.styles
+          });
+          setHackText(data.name || 'Aashish Thakur');
+        }
+
+        if (socialSnap.exists()) {
+          const sData = socialSnap.data() as SocialMediaData;
+          const mergedPlatforms = DEFAULT_SOCIAL_DATA.platforms.map(defaultPlatform => {
+            const existing = sData.platforms?.find(p => p.id === defaultPlatform.id);
+            return existing ? { ...defaultPlatform, ...existing } : defaultPlatform;
+          });
+          setSocialData({ platforms: mergedPlatforms });
+        }
+      } catch (error) {
+        console.error("Failed to load data", error);
+      } finally {
+        setIsLoadingHero(false);
+      }
+    };
+    fetchHeroData();
+  }, []);
+
+  // Trigger hack effect only once after loading completes
+  useEffect(() => {
+    if (!isLoadingHero) {
+      startHackEffect();
+    }
+  }, [isLoadingHero]);
+
+  useEffect(() => {
     setMounted(true)
     
     const handleResize = () => {
@@ -85,41 +499,48 @@ export default function Home() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  // Update document metadata dynamically
+  // SEO changes require a rebuild/redeploy to update metadata tags for static export.
+
   const startHackEffect = () => {
     if (isHacking) return
     setIsHacking(true)
     
-    const originalText = 'Aashish Thakur'
-    const chars = '01!@#$%^&*(){}[]<>?/\\|~`abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    let iterations = 0
-    
-    const interval = setInterval(() => {
-      setHackText(
-        originalText
-          .split('')
-          .map((char, index) => {
-            if (char === ' ') return ' '
-            if (index < iterations) {
-              return originalText[index]
-            }
-            return chars[Math.floor(Math.random() * chars.length)]
-          })
-          .join('')
-      )
+    // We get the latest name dynamically
+    setHeroData((currentHeroData) => {
+      const originalText = currentHeroData.name
+      const chars = '01!@#$%^&*(){}[]<>?/\\|~`abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+      let iterations = 0
       
-      iterations += 0.15
-      
-      if (iterations >= originalText.length) {
-        clearInterval(interval)
-        setHackText(originalText)
-        setIsHacking(false)
-      }
-    }, 60)
+      const interval = setInterval(() => {
+        setHackText(
+          originalText
+            .split('')
+            .map((char, index) => {
+              if (char === ' ') return ' '
+              if (index < iterations) {
+                return originalText[index]
+              }
+              return chars[Math.floor(Math.random() * chars.length)]
+            })
+            .join('')
+        )
+        
+        iterations += 0.15
+        
+        if (iterations >= originalText.length) {
+          clearInterval(interval)
+          setHackText(originalText)
+          setIsHacking(false)
+        }
+      }, 60)
+      return currentHeroData;
+    })
   }
 
   const resetText = () => {
     if (!isHacking) {
-      setHackText('Aashish Thakur')
+      setHackText(heroData.name)
     }
   }
 
@@ -232,6 +653,46 @@ export default function Home() {
   
   const heroContentOpacity = Math.max(0, 1 - (scrollProgress * 2))
 
+  const generateDynamicStyles = () => {
+    const typo = heroData.styles?.typography;
+    if (!typo) return "";
+
+    const currentTheme = resolvedTheme === 'dark' ? heroData.styles?.theme.dark : heroData.styles?.theme.light;
+
+    const generateCSS = (selector: string, settings: TypographySettings) => {
+      let css = `${selector} {\n`;
+      if (settings.fontFamily) css += `  font-family: ${settings.fontFamily} !important;\n`;
+      if (settings.fontSize) css += `  font-size: ${settings.fontSize} !important;\n`;
+      if (settings.fontWeight && settings.fontWeight !== 'inherit') css += `  font-weight: ${settings.fontWeight} !important;\n`;
+      if (settings.letterSpacing) css += `  letter-spacing: ${settings.letterSpacing} !important;\n`;
+      if (settings.lineHeight) css += `  line-height: ${settings.lineHeight} !important;\n`;
+      if (settings.textAlign && settings.textAlign !== 'inherit') css += `  text-align: ${settings.textAlign} !important;\n`;
+      if (settings.color) css += `  color: ${settings.color} !important;\n`;
+      css += `}\n`;
+      
+      if (settings.hoverColor) {
+        css += `${selector}:hover {\n  color: ${settings.hoverColor} !important;\n}\n`;
+      }
+      return css;
+    };
+
+    let css = "";
+    css += generateCSS('.hero-name-custom', typo.name);
+    css += generateCSS('.hero-title-custom', typo.title);
+    css += generateCSS('.hero-subtitle-custom', typo.subtitle);
+    css += generateCSS('.hero-description-custom', typo.description);
+    css += generateCSS('.hero-cta-custom', typo.ctaText);
+    
+    if (currentTheme?.backgroundColor) {
+      css += `#home { background-color: ${currentTheme.backgroundColor} !important; }\n`;
+    }
+    if (currentTheme?.textColor) {
+      css += `#home { color: ${currentTheme.textColor} !important; }\n`;
+    }
+
+    return css;
+  };
+
   const handleNavClick = (e: React.MouseEvent<any>, sectionId: string) => {
     e.preventDefault()
     const element = document.querySelector(sectionId)
@@ -260,7 +721,7 @@ export default function Home() {
   };
 
   useEffect(() => {
-    videos.forEach((_, index) => {
+    visibleVideos.forEach((_, index) => {
       const vid = videoRefs.current[index];
       if (vid) {
         if (index === displayedVideo || index === activeVideo) {
@@ -270,7 +731,7 @@ export default function Home() {
         }
       }
     });
-  }, [displayedVideo, activeVideo, videos]);
+  }, [displayedVideo, activeVideo, visibleVideos]);
 
   return (
     <main className="min-h-screen bg-background text-foreground transition-colors duration-300">
@@ -297,7 +758,8 @@ export default function Home() {
       </button>
 
       {/* Hero Section with sticky container */}
-      <div id="home" className="relative" style={{ height: (mounted && isMobile) ? 'auto' : '150vh' }}>
+      <style>{generateDynamicStyles()}</style>
+      <div id="home" className="relative transition-colors duration-300" style={{ height: (mounted && isMobile) ? 'auto' : '150vh' }}>
         <div className={(mounted && isMobile) ? "relative" : "sticky top-0 h-screen overflow-hidden"}>
           <div className="grid lg:grid-cols-2 h-full">
             <div className="flex items-center justify-center p-6 md:p-8 lg:p-16 relative">
@@ -309,11 +771,12 @@ export default function Home() {
                 }}
               >
                 <Image
-                  src="/images/profile.webp"
-                  alt="Aashish Thakur"
+                  src={heroData.profileImageUrl}
+                  alt={heroData.name}
                   fill
                   className="object-cover transition-all duration-700 group-hover:grayscale"
                   priority
+                  unoptimized
                 />
               </div>
             </div>
@@ -444,52 +907,72 @@ export default function Home() {
                 className="flex-1 flex flex-col justify-center transition-opacity duration-300 pt-24 md:pt-40 lg:pt-48"
                 style={{ opacity: heroContentOpacity }}
               >
-                <h1 
-                  className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-foreground mb-3 md:mb-6 cursor-pointer glitch-container group/name"
-                  style={{ fontFamily: 'var(--font-montserrat)' }}
-                  onMouseEnter={startHackEffect}
-                  onMouseLeave={resetText}
-                >
-                  <span className="glitch-text" data-text={hackText}>{hackText}</span>
-                </h1>
-                
-                <div className="space-y-1 md:space-y-2 mb-6 md:mb-12">
-                  <p className="text-base md:text-xl text-muted-foreground">
-                    Director & VFX Artist
-                  </p>
-                  <p className="text-sm md:text-lg text-muted-foreground font-semibold">
-                    Innovator & Design Thinker
-                  </p>
-                  <p className="text-sm md:text-lg text-muted-foreground">
-                    Building AI-powered healthcare solutions
-                  </p>
-                </div>
-
-                <button
-                  onClick={(e) => handleNavClick(e, '#contact')}
-                  className="space-y-3 md:space-y-4 group cursor-pointer text-left focus:outline-none"
-                >
-                  <div className="flex items-center gap-3 md:gap-4">
-                    <h2 className="text-xl md:text-3xl font-bold text-foreground transition-transform duration-300 group-hover:scale-110 origin-left">
-                      Let's create
-                    </h2>
-                    <svg 
-                      width="16" 
-                      height="16" 
-                      viewBox="0 0 24 24" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      strokeWidth="2" 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round"
-                      className="text-foreground md:w-6 md:h-6 transition-all duration-500 group-hover:translate-x-2 group-hover:-translate-y-2"
-                    >
-                      <line x1="7" y1="17" x2="17" y2="7"></line>
-                      <polyline points="7 7 17 7 17 17"></polyline>
-                    </svg>
+                {isLoadingHero ? (
+                  <div className="space-y-6 animate-pulse w-full max-w-lg">
+                    <div className="h-12 md:h-16 lg:h-20 bg-muted/20 rounded-md w-3/4 mb-6"></div>
+                    <div className="space-y-3 mb-12">
+                      <div className="h-6 bg-muted/20 rounded-md w-1/2"></div>
+                      <div className="h-5 bg-muted/20 rounded-md w-1/3"></div>
+                      <div className="h-5 bg-muted/20 rounded-md w-2/3"></div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="h-8 bg-muted/20 rounded-md w-32"></div>
+                      <div className="h-8 w-8 bg-muted/20 rounded-full"></div>
+                    </div>
                   </div>
-                  <div className="h-1 w-20 md:w-32 bg-foreground transition-all duration-500 ease-out group-hover:w-32 md:group-hover:w-48"></div>
-                </button>
+                ) : (
+                  <>
+                    <h1 
+                      className="hero-name-custom text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-foreground mb-3 md:mb-6 cursor-pointer glitch-container group/name"
+                      style={{ fontFamily: 'var(--font-montserrat)' }}
+                      onMouseEnter={startHackEffect}
+                      onMouseLeave={resetText}
+                    >
+                      <span className="glitch-text" data-text={hackText}>{hackText}</span>
+                    </h1>
+                    
+                    <div className="space-y-1 md:space-y-2 mb-6 md:mb-12">
+                      <p className="hero-title-custom text-base md:text-xl text-muted-foreground">
+                        {heroData.title}
+                      </p>
+                      <p className="hero-subtitle-custom text-sm md:text-lg text-muted-foreground font-semibold">
+                        {heroData.subtitle}
+                      </p>
+                      <p className="hero-description-custom text-sm md:text-lg text-muted-foreground">
+                        {heroData.description}
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={(e) => handleNavClick(e, '#contact')}
+                      className="space-y-3 md:space-y-4 group cursor-pointer text-left focus:outline-none"
+                    >
+                      <div className="flex items-center gap-3 md:gap-4">
+                        <h2 className="hero-cta-custom text-xl md:text-3xl font-bold text-foreground transition-transform duration-300 group-hover:scale-110 origin-left">
+                          {heroData.ctaText}
+                        </h2>
+                        <svg 
+                          width="16" 
+                          height="16" 
+                          viewBox="0 0 24 24" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          strokeWidth="2" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round"
+                          className="hero-cta-custom text-foreground md:w-6 md:h-6 transition-all duration-500 group-hover:translate-x-2 group-hover:-translate-y-2"
+                        >
+                          <line x1="7" y1="17" x2="17" y2="7"></line>
+                          <polyline points="7 7 17 7 17 17"></polyline>
+                        </svg>
+                      </div>
+                      <div 
+                        className="h-1 w-20 md:w-32 transition-all duration-500 ease-out group-hover:w-32 md:group-hover:w-48"
+                        style={{ backgroundColor: (resolvedTheme === 'dark' ? heroData.styles?.theme?.dark?.accentColor : heroData.styles?.theme?.light?.accentColor) || 'currentColor' }}
+                      ></div>
+                    </button>
+                  </>
+                )}
               </div>
               
               <div id="me"></div>
@@ -506,17 +989,33 @@ export default function Home() {
                     className="text-2xl sm:text-4xl md:text-5xl font-bold text-foreground leading-tight"
                     style={{ fontFamily: 'var(--font-montserrat)' }}
                   >
-                    AASHISH THAKUR
+                    {aboutMeData.title}
                   </h2>
                   <p 
                     className="text-base sm:text-xl md:text-2xl font-bold text-foreground tracking-wide"
                     style={{ fontFamily: 'var(--font-montserrat)' }}
                   >
-                    DIRECTOR & VFX ARTIST
+                    {aboutMeData.intro}
                   </p>
-                  <p className="text-xs md:text-base lg:text-lg text-muted-foreground leading-relaxed">
-                    Aashish Thakur is an aspiring innovator, developer, and design thinker passionate about building technology that solves real-world problems. Currently working on MediTrack+ and GlucoTrack+, focusing on AI-powered healthcare solutions, while also exploring web development, cloud technologies, and product design.
+                  <p className="text-xs md:text-base lg:text-lg text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                    {aboutMeData.biography}
                   </p>
+                  {aboutMeData.experience && (
+                    <p className="text-xs md:text-base lg:text-lg text-muted-foreground leading-relaxed font-semibold">
+                      {aboutMeData.experience}
+                    </p>
+                  )}
+                  {aboutMeData.skills && aboutMeData.skills.length > 0 && (
+                    <div className="pt-2 md:pt-4">
+                      <div className="flex flex-wrap gap-2">
+                        {aboutMeData.skills.map(skill => (
+                          <span key={skill.id} className="px-3 py-1 bg-foreground/10 text-foreground border border-foreground/20 rounded-full text-xs md:text-sm font-medium">
+                            {skill.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -540,73 +1039,32 @@ export default function Home() {
               Portfolio
             </h2>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-              <div 
-                className="group overflow-hidden"
-                style={{
-                  opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 700) / 200)),
-                  transform: isMobile ? 'none' : `translateY(${Math.max(0, 40 - (scrollY - 700) / 5)}px)`
-                }}
-              >
-                <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg">
-                  <Image
-                    src="/images/poster-1.jpg"
-                    alt="GAYAK Movie Poster - Cinematic VFX Design"
-                    fill
-                    className="object-cover transition-all duration-500 group-hover:scale-110 group-hover:grayscale"
-                  />
-                </div>
-              </div>
-
-              <div 
-                className="group overflow-hidden"
-                style={{
-                  opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 750) / 200)),
-                  transform: isMobile ? 'none' : `translateY(${Math.max(0, 40 - (scrollY - 750) / 5)}px)`
-                }}
-              >
-                <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg">
-                  <Image
-                    src="/images/poster-2.jpg"
-                    alt="GAYAK Movie Poster - Visual Effects Showcase"
-                    fill
-                    className="object-cover transition-all duration-500 group-hover:scale-110 group-hover:grayscale"
-                  />
-                </div>
-              </div>
-
-              <div 
-                className="group overflow-hidden"
-                style={{
-                  opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 800) / 200)),
-                  transform: isMobile ? 'none' : `translateY(${Math.max(0, 40 - (scrollY - 800) / 5)}px)`
-                }}
-              >
-                <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg">
-                  <Image
-                    src="/images/poster-3.jpg"
-                    alt="GAYAK Movie Poster - Sunset Composition"
-                    fill
-                    className="object-cover transition-all duration-500 group-hover:scale-110 group-hover:grayscale"
-                  />
-                </div>
-              </div>
-
-              <div 
-                className="group overflow-hidden"
-                style={{
-                  opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 850) / 200)),
-                  transform: isMobile ? 'none' : `translateY(${Math.max(0, 40 - (scrollY - 850) / 5)}px)`
-                }}
-              >
-                <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg">
-                  <Image
-                    src="/images/poster-4.jpg"
-                    alt="GAYAK Movie Poster - Ensemble Cast"
-                    fill
-                    className="object-cover transition-all duration-500 group-hover:scale-110 group-hover:grayscale"
-                  />
-                </div>
-              </div>
+              {projectsData
+                .filter(p => p.enabled)
+                .map((project, index) => {
+                  const animOffset = 700 + index * 50;
+                  return (
+                    <div 
+                      key={project.id}
+                      className="group overflow-hidden"
+                      style={{
+                        opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - animOffset) / 200)),
+                        transform: isMobile ? 'none' : `translateY(${Math.max(0, 40 - (scrollY - animOffset) / 5)}px)`
+                      }}
+                    >
+                      <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg">
+                        {project.thumbnailUrl && (
+                          <Image
+                            src={project.thumbnailUrl}
+                            alt={project.title}
+                            fill
+                            className="object-cover transition-all duration-500 group-hover:scale-110 group-hover:grayscale"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  );
+              })}
             </div>
           </div>
         </div>
@@ -640,241 +1098,174 @@ export default function Home() {
               transform: isMobile ? 'none' : `scale(${Math.min(1, Math.max(0.9, 0.9 + (scrollY - 1900) / 3000))})`,
             }}
           >
-            {/* Main Video Player */}
-            <div className="relative aspect-video w-full overflow-hidden rounded-lg shadow-2xl shadow-black/50 group bg-black">
-              {videos.map((video, index) => {
-                const isDisplayed = index === displayedVideo;
-                const isRequested = index === activeVideo;
-                return (
-                  <video
-                    key={video.src}
-                    ref={el => { videoRefs.current[index] = el; }}
-                    src={video.src}
-                    poster={loadedVideos[index] ? undefined : video.poster}
-                    autoPlay={isDisplayed || isRequested}
-                    loop
-                    muted
-                    playsInline
-                    preload={isRequested ? "auto" : "metadata"}
-                    onLoadedData={() => handleVideoLoaded(index)}
-                    className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ease-in-out group-hover:scale-105 ${
-                      isDisplayed ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
-                    }`}
-                  />
-                );
-              })}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none z-20" />
-              
-              {/* Navigation Arrows */}
-              <button
-                onClick={() => handleVideoChange(activeVideo === 0 ? videos.length - 1 : activeVideo - 1)}
-                className="absolute z-30 left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white transition-all duration-300 opacity-0 group-hover:opacity-100"
-                aria-label="Previous video"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m15 18-6-6 6-6"/>
-                </svg>
-              </button>
-              <button
-                onClick={() => handleVideoChange(activeVideo === videos.length - 1 ? 0 : activeVideo + 1)}
-                className="absolute z-30 right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white transition-all duration-300 opacity-0 group-hover:opacity-100"
-                aria-label="Next video"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m9 18 6-6-6-6"/>
-                </svg>
-              </button>
-            </div>
-            
-            {/* Video Info */}
-            <div className="mt-6 md:mt-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div>
-                <h3 className="text-xl md:text-2xl font-bold text-white">{videos[activeVideo].title}</h3>
-                <p className="text-gray-400">{videos[activeVideo].description}</p>
+            {visibleVideos.length === 0 ? (
+              <div className="flex items-center justify-center h-64 border border-white/20 rounded-lg text-gray-500 italic">
+                No videos currently available to display.
               </div>
-              <div className="flex gap-3">
-                {videos[activeVideo].tags.map((tag, index) => (
-                  <span key={index} className="px-4 py-2 bg-white/10 text-white text-sm rounded-full">{tag}</span>
-                ))}
-              </div>
-            </div>
-            
-            {/* Video Thumbnails/Indicators */}
-            {/* Desktop Thumbnails */}
-            <div className="mt-8 hidden lg:flex gap-4 justify-center">
-              {videos.map((video, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleVideoChange(index)}
-                  className={`relative overflow-hidden rounded-lg transition-all duration-300 ${
-                    activeVideo === index 
-                      ? 'ring-2 ring-white scale-105' 
-                      : 'opacity-50 hover:opacity-80'
-                  }`}
-                >
-                  <div className="w-32 md:w-40 aspect-video bg-gray-800 relative">
-                    <Image
-                      src={video.poster || ''}
-                      alt={video.title}
-                      fill
-                      className="object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black/30" />
-                  </div>
-                  <p className="text-xs text-white mt-2 text-center truncate px-1">{video.title}</p>
-                </button>
-              ))}
-            </div>
-
-            {/* Mobile Project Selector Buttons */}
-            <div className="mt-6 flex lg:hidden flex-wrap gap-3 justify-center">
-              {videos.map((video, index) => {
-                const shortTitle = video.title.split(' -')[0].replace(' Sequence', '');
-                return (
+            ) : (
+              <>
+                {/* Main Video Player */}
+                <div className="relative aspect-video w-full overflow-hidden rounded-lg shadow-2xl shadow-black/50 group bg-black">
+                  {visibleVideos.map((video, index) => {
+                    const isDisplayed = index === displayedVideo;
+                    const isRequested = index === activeVideo;
+                    return (
+                      <video
+                        key={video.id}
+                        ref={el => { videoRefs.current[index] = el; }}
+                        src={video.videoUrl}
+                        poster={loadedVideos[index] ? undefined : video.thumbnailUrl}
+                        autoPlay={isDisplayed || isRequested}
+                        loop
+                        muted
+                        playsInline
+                        preload={isRequested ? "auto" : "metadata"}
+                        onLoadedData={() => handleVideoLoaded(index)}
+                        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ease-in-out group-hover:scale-105 ${
+                          isDisplayed ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
+                        }`}
+                      />
+                    );
+                  })}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none z-20" />
+                  
+                  {/* Navigation Arrows */}
                   <button
-                    key={index}
-                    onClick={() => handleVideoChange(index)}
-                    className={`px-4 py-2 text-sm rounded-full border transition-all duration-300 active:scale-95 ${
-                      activeVideo === index 
-                        ? 'bg-white text-black border-white' 
-                        : 'bg-black text-white border-white/20 hover:border-white/50 hover:bg-white/10'
-                    }`}
+                    onClick={() => handleVideoChange(activeVideo === 0 ? visibleVideos.length - 1 : activeVideo - 1)}
+                    className="absolute z-30 left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white transition-all duration-300 opacity-0 group-hover:opacity-100"
+                    aria-label="Previous video"
                   >
-                    {shortTitle}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m15 18-6-6 6-6"/>
+                    </svg>
                   </button>
-                );
-              })}
-            </div>
+                  <button
+                    onClick={() => handleVideoChange(activeVideo === visibleVideos.length - 1 ? 0 : activeVideo + 1)}
+                    className="absolute z-30 right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white transition-all duration-300 opacity-0 group-hover:opacity-100"
+                    aria-label="Next video"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                  </button>
+                </div>
+                
+                {/* Video Info */}
+                <div className="mt-6 md:mt-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div>
+                    <h3 className="text-xl md:text-2xl font-bold text-white">{visibleVideos[activeVideo]?.title}</h3>
+                    <p className="text-gray-400">{visibleVideos[activeVideo]?.description}</p>
+                  </div>
+                  <div className="flex gap-3">
+                    {visibleVideos[activeVideo]?.tags.split(',').map((tag, index) => tag.trim() && (
+                      <span key={index} className="px-4 py-2 bg-white/10 text-white text-sm rounded-full">{tag.trim()}</span>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Video Thumbnails/Indicators */}
+                {/* Desktop Thumbnails */}
+                <div className="mt-8 hidden lg:flex gap-4 justify-center">
+                  {visibleVideos.map((video, index) => (
+                    <button
+                      key={video.id}
+                      onClick={() => handleVideoChange(index)}
+                      className={`relative overflow-hidden rounded-lg transition-all duration-300 ${
+                        activeVideo === index 
+                          ? 'ring-2 ring-white scale-105' 
+                          : 'opacity-50 hover:opacity-80'
+                      }`}
+                    >
+                      <div className="w-32 md:w-40 aspect-video bg-gray-800 relative">
+                        <Image
+                          src={video.thumbnailUrl || ''}
+                          alt={video.title}
+                          fill
+                          className="object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/30" />
+                      </div>
+                      <p className="text-xs text-white mt-2 text-center truncate px-1">{video.title}</p>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Mobile Project Selector Buttons */}
+                <div className="mt-6 flex lg:hidden flex-wrap gap-3 justify-center">
+                  {visibleVideos.map((video, index) => {
+                    const shortTitle = video.title.split(' -')[0].replace(' Sequence', '');
+                    return (
+                      <button
+                        key={video.id}
+                        onClick={() => handleVideoChange(index)}
+                        className={`px-4 py-2 text-sm rounded-full border transition-all duration-300 active:scale-95 ${
+                          activeVideo === index 
+                            ? 'bg-white text-black border-white' 
+                            : 'bg-black text-white border-white/20 hover:border-white/50 hover:bg-white/10'
+                        }`}
+                      >
+                        {shortTitle}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </section>
 
       <section id="services" className="lg:min-h-screen bg-background text-foreground px-6 md:px-12 lg:px-20 py-20 transition-colors duration-300">
         <div className="max-w-[1600px] mx-auto">
-          <h2 
-            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-16 md:mb-24 text-foreground text-center"
-            style={{
-              opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 2200) / 400)),
-              transform: isMobile ? 'none' : `translateY(${Math.max(0, 40 - (scrollY - 2200) / 12)}px)`
-            }}
-          >
-            Services
-          </h2>
+          <div className="text-center mb-16 md:mb-24">
+            <h2 
+              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground mb-4"
+              style={{
+                opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 2200) / 400)),
+                transform: isMobile ? 'none' : `translateY(${Math.max(0, 40 - (scrollY - 2200) / 12)}px)`
+              }}
+            >
+              {servicesData.title}
+            </h2>
+            {servicesData.subtitle && (
+              <p 
+                className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto"
+                style={{
+                  opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 2250) / 400)),
+                  transform: isMobile ? 'none' : `translateY(${Math.max(0, 40 - (scrollY - 2250) / 12)}px)`
+                }}
+              >
+                {servicesData.subtitle}
+              </p>
+            )}
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12 lg:gap-16">
-            {/* Service 1 */}
-            <div 
-              className="space-y-4 group"
-              style={{
-                opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 2400) / 300)),
-                transform: isMobile ? 'none' : `translateY(${Math.max(0, 50 - (scrollY - 2400) / 8)}px)`
-              }}
-            >
-              <div className="text-5xl md:text-6xl font-bold text-gray-300 dark:text-zinc-700 group-hover:text-black dark:group-hover:text-white transition-colors duration-300">
-                01
-              </div>
-              <h3 className="text-2xl md:text-3xl font-bold text-foreground">
-                VFX & Video Editing
-              </h3>
-              <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
-                Professional visual effects, compositing, color grading, and cinematic video editing for films, commercials, and digital content.
-              </p>
-            </div>
-
-            {/* Service 2 */}
-            <div 
-              className="space-y-4 group"
-              style={{
-                opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 2500) / 300)),
-                transform: isMobile ? 'none' : `translateY(${Math.max(0, 50 - (scrollY - 2500) / 8)}px)`
-              }}
-            >
-              <div className="text-5xl md:text-6xl font-bold text-gray-300 dark:text-zinc-700 group-hover:text-black dark:group-hover:text-white transition-colors duration-300">
-                02
-              </div>
-              <h3 className="text-2xl md:text-3xl font-bold text-foreground">
-                UI/UX Design
-              </h3>
-              <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
-                Creating intuitive and visually stunning user interfaces with a focus on user experience and modern design principles.
-              </p>
-            </div>
-
-            {/* Service 3 */}
-            <div 
-              className="space-y-4 group"
-              style={{
-                opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 2600) / 300)),
-                transform: isMobile ? 'none' : `translateY(${Math.max(0, 50 - (scrollY - 2600) / 8)}px)`
-              }}
-            >
-              <div className="text-5xl md:text-6xl font-bold text-gray-300 dark:text-zinc-700 group-hover:text-black dark:group-hover:text-white transition-colors duration-300">
-                03
-              </div>
-              <h3 className="text-2xl md:text-3xl font-bold text-foreground">
-                Web Development
-              </h3>
-              <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
-                Full-stack web development using modern technologies, building scalable and performant web applications.
-              </p>
-            </div>
-
-            {/* Service 4 */}
-            <div 
-              className="space-y-4 group"
-              style={{
-                opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 2700) / 300)),
-                transform: isMobile ? 'none' : `translateY(${Math.max(0, 50 - (scrollY - 2700) / 8)}px)`
-              }}
-            >
-              <div className="text-5xl md:text-6xl font-bold text-gray-300 dark:text-zinc-700 group-hover:text-black dark:group-hover:text-white transition-colors duration-300">
-                04
-              </div>
-              <h3 className="text-2xl md:text-3xl font-bold text-foreground">
-                Brand Identity
-              </h3>
-              <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
-                Developing distinctive visual identities through logo design, color systems, and cohesive brand assets.
-              </p>
-            </div>
-
-            {/* Service 5 */}
-            <div 
-              className="space-y-4 group"
-              style={{
-                opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 2800) / 300)),
-                transform: isMobile ? 'none' : `translateY(${Math.max(0, 50 - (scrollY - 2800) / 8)}px)`
-              }}
-            >
-              <div className="text-5xl md:text-6xl font-bold text-gray-300 dark:text-zinc-700 group-hover:text-black dark:group-hover:text-white transition-colors duration-300">
-                05
-              </div>
-              <h3 className="text-2xl md:text-3xl font-bold text-foreground">
-                Consulting
-              </h3>
-              <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
-                Technology and creative consulting to help guide your digital transformation and creative projects.
-              </p>
-            </div>
-
-            {/* Service 6 */}
-            <div 
-              className="space-y-4 group"
-              style={{
-                opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - 2900) / 300)),
-                transform: isMobile ? 'none' : `translateY(${Math.max(0, 50 - (scrollY - 2900) / 8)}px)`
-              }}
-            >
-              <div className="text-5xl md:text-6xl font-bold text-gray-300 dark:text-zinc-700 group-hover:text-black dark:group-hover:text-white transition-colors duration-300">
-                06
-              </div>
-              <h3 className="text-2xl md:text-3xl font-bold text-foreground">
-                Motion Graphics
-              </h3>
-              <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
-                Dynamic motion graphics and animations for engaging visual storytelling and brand communication.
-              </p>
-            </div>
+            {servicesData.services
+              .filter(service => service.enabled)
+              .map((service, index) => {
+                const animDelayOffset = index * 100;
+                return (
+                  <div 
+                    key={service.id}
+                    className="space-y-4 group"
+                    style={{
+                      opacity: isMobile ? 1 : Math.min(1, Math.max(0, (scrollY - (2400 + animDelayOffset)) / 300)),
+                      transform: isMobile ? 'none' : `translateY(${Math.max(0, 50 - (scrollY - (2400 + animDelayOffset)) / 8)}px)`
+                    }}
+                  >
+                    <div className="text-5xl md:text-6xl font-bold text-gray-300 dark:text-zinc-700 group-hover:text-black dark:group-hover:text-white transition-colors duration-300">
+                      {String(index + 1).padStart(2, '0')}
+                    </div>
+                    <h3 className="text-2xl md:text-3xl font-bold text-foreground">
+                      {service.title}
+                    </h3>
+                    <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
+                      {service.description}
+                    </p>
+                  </div>
+                );
+            })}
           </div>
         </div>
       </section>
@@ -888,7 +1279,7 @@ export default function Home() {
               transform: isMobile ? 'none' : `translateY(${Math.max(0, 40 - (scrollY - 3200) / 12)}px)`
             }}
           >
-            Start Your Project
+            {contactData.title}
           </h2>
 
           <p 
@@ -898,7 +1289,7 @@ export default function Home() {
               transform: isMobile ? 'none' : `translateY(${Math.max(0, 30 - (scrollY - 3300) / 10)}px)`
             }}
           >
-            Let's collaborate and bring your ideas to life. Select your project details below.
+            {contactData.subtitle}
           </p>
 
           {submitSuccess ? (
@@ -920,7 +1311,7 @@ export default function Home() {
                   Thank you, <span className="text-white font-semibold">{formData.name}</span>. I have received your request for a <span className="text-white font-semibold">{formData.projectType || 'Creative'}</span> project with a budget of <span className="text-white font-semibold">{formData.budget || 'Custom'}</span>.
                 </p>
                 <p className="text-gray-500 text-sm">
-                  I will get back to you at <span className="text-gray-300">{formData.email}</span> within 24 hours.
+                  I will get back to you at <span className="text-gray-300">{formData.email}</span> {contactData.responseTime || 'within 24 hours'}.
                 </p>
               </div>
               
@@ -934,7 +1325,7 @@ export default function Home() {
                 </button>
               </div>
             </div>
-          ) : (
+          ) : contactData.enableForm ? (
             <form 
               onSubmit={handleSubmit}
               className="space-y-10 md:space-y-12"
@@ -1091,7 +1482,7 @@ export default function Home() {
                     </>
                   ) : (
                     <>
-                      <span className="relative z-10 group-hover:text-black transition-colors duration-300">Send Proposal</span>
+                      <span className="relative z-10 group-hover:text-black transition-colors duration-300">{contactData.ctaText}</span>
                       <svg 
                         width="24" 
                         height="24" 
@@ -1111,7 +1502,7 @@ export default function Home() {
                 </button>
               </div>
             </form>
-          )}
+          ) : null}
 
           <div 
             className="mt-16 md:mt-20 pt-12 border-t border-gray-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-6"
@@ -1121,34 +1512,51 @@ export default function Home() {
           >
             <div className="space-y-2">
               <p className="text-gray-400 text-sm uppercase tracking-wider">Direct Contact</p>
-              <Link 
-                href="mailto:aashishthakurbusiness@gmail.com"
-                className="text-xl md:text-2xl hover:text-gray-400 transition-colors"
-              >
-                aashishthakurbusiness@gmail.com
-              </Link>
+              <div className="flex flex-col gap-2">
+                {contactData.showEmail && contactData.email && (
+                  <Link 
+                    href={`mailto:${contactData.email}`}
+                    className="text-xl md:text-2xl hover:text-gray-400 transition-colors block"
+                  >
+                    {contactData.email}
+                  </Link>
+                )}
+                {contactData.showPhone && contactData.phone && (
+                  <Link 
+                    href={`tel:${contactData.phone.replace(/[^0-9+]/g, '')}`}
+                    className="text-xl md:text-2xl hover:text-gray-400 transition-colors block"
+                  >
+                    {contactData.phone}
+                  </Link>
+                )}
+                {contactData.location && (
+                  <p className="text-lg text-gray-500 block">
+                    {contactData.location}
+                  </p>
+                )}
+              </div>
             </div>
             <div className="space-y-2">
               <p className="text-gray-400 text-sm uppercase tracking-wider">Follow</p>
-              <div className="flex gap-6">
-                <Link 
-                  href="https://github.com/aashishthakurbusiness-ship-it" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-xl hover:text-gray-400 transition-colors"
-                >
-                  GitHub
-                </Link>
-                <Link 
-                  href="https://www.linkedin.com/in/aashishthakurbusiness" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-xl hover:text-gray-400 transition-colors"
-                >
-                  LinkedIn
-                </Link>
+              <div className="flex flex-wrap gap-6">
+                {socialData.platforms
+                  .filter(p => p.enabled)
+                  .map(platform => (
+                    <Link 
+                      key={platform.id}
+                      href={platform.url || '#'} 
+                      target={platform.openInNewTab ? "_blank" : undefined} 
+                      rel={platform.openInNewTab ? "noopener noreferrer" : undefined}
+                      className="text-xl hover:text-gray-400 transition-colors"
+                    >
+                      {platform.name}
+                    </Link>
+                ))}
               </div>
             </div>
+          </div>
+          <div className="mt-12 pt-8 border-t border-gray-800 text-center text-sm text-gray-500 pb-8">
+            {globalSettings.copyrightText}
           </div>
         </div>
       </section>
