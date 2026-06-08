@@ -7,7 +7,7 @@
     "dev": "next dev",
     "lint": "eslint .",
     "start": "next start",
-    "pages:build": "npx @opennextjs/cloudflare build"
+    "pages:build": "npx @opennextjs/cloudflare build && node -e \"require('fs').copyFileSync('.open-next/worker.js', '.open-next/assets/_worker.js')\""
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
