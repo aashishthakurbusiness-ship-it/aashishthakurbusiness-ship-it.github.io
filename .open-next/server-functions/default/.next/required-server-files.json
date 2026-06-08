@@ -1,7 +1,16 @@
 {
   "version": 1,
   "config": {
-    "env": {},
+    "env": {
+      "NEXT_PUBLIC_WEB3FORMS_ACCESS_KEY": "ca1b4399-6a58-4070-a57a-efd55de2e611",
+      "NEXT_PUBLIC_FIREBASE_API_KEY": "AIzaSyA5OlYS9BOo5g60AWUR5INF_A52pm9zh1U",
+      "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN": "aashishportfolio-cms.firebaseapp.com",
+      "NEXT_PUBLIC_FIREBASE_PROJECT_ID": "aashishportfolio-cms",
+      "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET": "aashishportfolio-cms.firebasestorage.app",
+      "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "858910709316",
+      "NEXT_PUBLIC_FIREBASE_APP_ID": "1:858910709316:web:9225d7c4cee705aa2dce11",
+      "NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID": "G-M6CJK11NBP"
+    },
     "webpack": null,
     "typescript": {
       "ignoreBuildErrors": false

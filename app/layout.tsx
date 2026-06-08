@@ -1,6 +1,5 @@
 import type { Metadata } from "next"
 import { Geist, Geist_Mono, Montserrat, Special_Elite } from "next/font/google"
-import { Analytics } from "@vercel/analytics/next"
 import { ThemeProvider } from "@/components/theme-provider"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { GlobalThemeInject } from "@/components/global-theme-inject"
@@ -122,8 +121,6 @@ export default function RootLayout({
           <ThemeToggle />
           {children}
         </ThemeProvider>
-
-        <Analytics />
       </body>
     </html>
   )
