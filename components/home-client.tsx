@@ -365,6 +365,7 @@ export function HomeClient({ initialData }: { initialData?: any }) {
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
+  const [isRateLimited, setIsRateLimited] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [heroHeight, setHeroHeight] = useState(800)
@@ -387,8 +388,19 @@ export function HomeClient({ initialData }: { initialData?: any }) {
   useEffect(() => {
     setMounted(true)
     
-    if (typeof window !== 'undefined' && 'scrollRestoration' in history) {
-      history.scrollRestoration = 'manual'
+    // Rate Limiting Logic
+    if (typeof window !== 'undefined') {
+      const msgCount = parseInt(localStorage.getItem('msgCount') || '0', 10)
+      const lastMsgTime = parseInt(localStorage.getItem('lastMsgTime') || '0', 10)
+      if (msgCount >= 2 && Date.now() - lastMsgTime < 24 * 60 * 60 * 1000) {
+        setIsRateLimited(true)
+      } else if (Date.now() - lastMsgTime >= 24 * 60 * 60 * 1000) {
+        localStorage.setItem('msgCount', '0')
+      }
+
+      if ('scrollRestoration' in history) {
+        history.scrollRestoration = 'manual'
+      }
     }
     window.scrollTo(0, 0)
     
@@ -553,6 +565,10 @@ export function HomeClient({ initialData }: { initialData?: any }) {
         throw new Error(data.message || 'Failed to submit proposal.')
       }
 
+      const newCount = parseInt(localStorage.getItem('msgCount') || '0', 10) + 1
+      localStorage.setItem('msgCount', newCount.toString())
+      localStorage.setItem('lastMsgTime', Date.now().toString())
+      
       setSubmitSuccess(true)
     } catch (error: any) {
       console.error('Submission error:', error)
@@ -573,6 +589,12 @@ export function HomeClient({ initialData }: { initialData?: any }) {
     })
     setSubmitSuccess(false)
     setSubmitError('')
+    
+    // Check if they hit the limit after resetting
+    const msgCount = parseInt(localStorage.getItem('msgCount') || '0', 10)
+    if (msgCount >= 2) {
+      setIsRateLimited(true)
+    }
   }
   
   const heroContentOpacity = Math.max(0, 1 - (scrollProgress * 2))
@@ -1250,6 +1272,16 @@ export function HomeClient({ initialData }: { initialData?: any }) {
               </div>
             </div>
           ) : contactData.enableForm ? (
+            isRateLimited ? (
+              <div className="bg-zinc-900/50 backdrop-blur-md p-8 md:p-12 rounded-2xl border border-white/10 text-center relative overflow-hidden group">
+                <div className="space-y-4">
+                  <h3 className="text-2xl font-bold text-white">Message Limit Reached</h3>
+                  <p className="text-gray-400 text-lg max-w-xl mx-auto leading-relaxed">
+                    You've already sent a couple of messages recently! Please wait 24 hours before sending another one, or email me directly at <a href={`mailto:${contactData.email}`} className="text-white hover:underline">{contactData.email}</a>.
+                  </p>
+                </div>
+              </div>
+            ) : (
             <form 
               onSubmit={handleSubmit}
               className="space-y-10 md:space-y-12"
@@ -1426,6 +1458,7 @@ export function HomeClient({ initialData }: { initialData?: any }) {
                 </button>
               </div>
             </form>
+            )
           ) : null}
 
           <div 
