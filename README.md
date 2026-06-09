@@ -32,6 +32,31 @@ To understand how the site works in production, here is the exact data flow:
 3. **Hydration Phase**: As soon as the React code loads in the browser, the `HomeDataLoader` client component makes an asynchronous request to your Firebase Firestore database to fetch your Hero text, Projects, Contact info, etc.
 4. **Render Phase**: The page is instantly hydrated with your live data. If you change a typo in your CMS Admin panel, the next user who visits (or refreshes) will immediately see the change because the data is fetched live from the client-side.
 
+```mermaid
+sequenceDiagram
+    participant Dev as Developer / GitHub
+    participant CF as Cloudflare Pages
+    participant CDN as Cloudflare CDN (Edge)
+    participant User as Website Visitor
+    participant FB as Firebase Firestore (CMS)
+
+    Note over Dev,CF: 1. Build Phase (SSG)
+    Dev->>CF: Git Push
+    CF->>CF: npm run pages:build (next build)
+    CF->>CF: Output static HTML/CSS/JS to out/
+    CF->>CDN: Deploy static assets globally
+
+    Note over CDN,User: 2. Serving Phase
+    User->>CDN: Visit aashishthakurbusiness.pages.dev
+    CDN-->>User: Instantly returns static index.html
+
+    Note over User,FB: 3. Hydration & Render Phase (Client-Side)
+    User->>User: React loads & mounts <HomeDataLoader />
+    User->>FB: Fetch dynamic content (Hero, Projects, etc.)
+    FB-->>User: Return latest CMS data
+    User->>User: Page UI updates with live content
+```
+
 ---
 
 ## 💻 Local Development
